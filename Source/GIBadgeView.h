@@ -34,6 +34,9 @@
 @property (nonatomic) CGFloat topOffset;
 @property (nonatomic) CGFloat rightOffset;
 
+@property (nonatomic) CGFloat dotRadius;
+@property (nonatomic) BOOL showDot;
+
 /**
  * Increment the badge value, which will result in the badge being displayed if the current value is zero.
  */

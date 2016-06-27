@@ -25,7 +25,7 @@ static CGFloat const kBadgeViewDefaultFontSize = 12.0;
     if (self = [super initWithCoder:aDecoder]) {
         [self commonInit];
     }
-
+    
     return self;
 }
 
@@ -33,7 +33,7 @@ static CGFloat const kBadgeViewDefaultFontSize = 12.0;
     if (self = [super init]) {
         [self commonInit];
     }
-
+    
     return self;
 }
 
@@ -41,7 +41,7 @@ static CGFloat const kBadgeViewDefaultFontSize = 12.0;
     self.formatter = [NSNumberFormatter new];
     self.formatter.groupingSeparator = @",";
     self.formatter.usesGroupingSeparator = YES;
-
+    
     [self setupDefaultAppearance];
 }
 
@@ -54,14 +54,14 @@ static CGFloat const kBadgeViewDefaultFontSize = 12.0;
     self.clipsToBounds = YES;
     self.hidden = YES;
     self.backgroundColor = [UIColor redColor];
-
+    
     // Defaults for the label.
     //
     self.valueLabel = [UILabel new];
     self.valueLabel.textAlignment = NSTextAlignmentCenter;
     self.valueLabel.backgroundColor = [UIColor clearColor];
     [self addSubview:self.valueLabel];
-
+    
     self.textColor = [UIColor whiteColor];
     self.font = [UIFont boldSystemFontOfSize:kBadgeViewDefaultFontSize];
     
@@ -72,45 +72,61 @@ static CGFloat const kBadgeViewDefaultFontSize = 12.0;
 
 - (void)setTextColor:(UIColor *)textColor {
     _textColor = textColor;
-
+    
     self.valueLabel.textColor = textColor;
 }
 
 - (void)setFont:(UIFont *)font {
     _font = font;
-
+    
     self.valueLabel.font = font;
 }
 
+- (void)setDotRadius:(CGFloat)dotRadius {
+    _dotRadius = dotRadius;
+    
+    [self layoutSubviews];
+}
 
 #pragma mark - Layout
 
 - (void)layoutSubviews {
     [super layoutSubviews];
-
+    
     [self layoutBadgeSubviews];
 }
 
 - (void)layoutBadgeSubviews {
+    if (!self.badgeValue && self.showDot) {
+        self.valueLabel.hidden = YES;
+        
+        self.frame = CGRectMake(CGRectGetWidth(self.superview.frame) - self.dotRadius - self.rightOffset,
+                                self.topOffset - self.dotRadius,
+                                self.dotRadius*2,
+                                self.dotRadius*2);
+        self.layer.cornerRadius = self.dotRadius;
+        return;
+    }
+    
     // Size our label to fit.
     //
     [self.valueLabel sizeToFit];
-
+    
     // Get the height of the label - which was determined by sizeToFit.
     //
     CGFloat badgeLabelWidth = CGRectGetWidth(self.valueLabel.frame);
     CGFloat badgeLabelHeight = CGRectGetHeight(self.valueLabel.frame);
-
+    
     // Calculate the height and width we will be based on the label.
     //
     CGFloat height = MAX(kBadgeViewMinimumSize, badgeLabelHeight + kBadgeViewPadding);
     CGFloat width = MAX(height, badgeLabelWidth + (2 * kBadgeViewPadding));
-
+    
     // Set our frame and corner radius based on those calculations.
     //
     self.frame = CGRectMake(CGRectGetWidth(self.superview.frame) - (width / 2.0) - self.rightOffset, -(height / 2.0) + self.topOffset, width, height);
     self.layer.cornerRadius = height / 2.0;
-
+    
     // Center the badge label.
     //
     self.valueLabel.frame = CGRectMake((width / 2.0) - (badgeLabelWidth / 2.0), (height / 2.0) - (badgeLabelHeight / 2.0), badgeLabelWidth, badgeLabelHeight);
@@ -127,25 +143,36 @@ static CGFloat const kBadgeViewDefaultFontSize = 12.0;
     self.badgeValue--;
 }
 
+- (void)setShowDot:(BOOL)showDot {
+    _showDot = showDot;
+    
+    [self updateState];
+}
+
 - (void)setBadgeValue:(NSInteger)badgeValue {
+    if (self.showDot) {
+        [self updateState];
+        return;
+    }
+    
     // No-op if we're given zero or less and our current badge value is zero,
     // meaning we're hidden anyway.
     //
     if (badgeValue <= 0 && self.badgeValue == 0) {
         return;
     }
-
+    
     // If we're given a negative number and our badge value is a positive number,
     // treat this like we're setting it to zero.
     //
     if (badgeValue < 0 && self.badgeValue > 0) {
         badgeValue = 0;
     }
-
+    
     // Save the new badge value now that we've sanitized it.
     //
     _badgeValue = badgeValue;
-
+    
     // If the badge value is larger than zero, let's update the label. The reason
     // for this is that it looks weird when the label changes to 0 and then animates
     // away. It makes more sense for it to simply disappear.
@@ -153,7 +180,7 @@ static CGFloat const kBadgeViewDefaultFontSize = 12.0;
     if (badgeValue > 0) {
         self.valueLabel.text = [self.formatter stringFromNumber:@(badgeValue)];
     }
-
+    
     // Update our state.
     //
     [self updateState];
@@ -165,17 +192,17 @@ static CGFloat const kBadgeViewDefaultFontSize = 12.0;
 - (void)updateState {
     // If we're currently hidden and we should be visible, show ourself.
     //
-    if (self.isHidden && self.badgeValue > 0) {
+    if (self.isHidden && (self.badgeValue > 0 || self.showDot)) {
         [self layoutBadgeSubviews];
         [self show];
     }
-
+    
     // Otherwise if we're visible and we shouldn't be, hide ourself.
     //
-    else if (!self.isHidden && self.badgeValue <= 0) {
+    else if (!self.isHidden && (self.badgeValue <= 0 && !self.showDot)) {
         [self hide];
     }
-
+    
     // Otherwise update the subviews.
     //
     else {
